@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  mibaraka-house:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mibaraka-house
+    restart: unless-stopped
+    ports:
+      # Verrouille l'accès depuis l'extérieur. Seul NPM en local pourra y accéder.
+      # Utilise le port 8083 pour éviter tout conflit avec EcoPrime
+      - "0.0.0.0:8083:80"
+    volumes:
+      - ./storage:/var/www/html/storage
+      - .env:/var/www/html/.env
+    networks:
+      - mibarakahouse-network
+    depends_on:
+      - mibarakahouse-db
+
+  mibarakahouse-db:
+    image: mysql:8.0
+    container_name: mibarakahouse-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: mibarakahouse_db
+      MYSQL_USER: mibarakahouse_user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mibarakahouse-db-data:/var/lib/mysql
+    networks:
+      - mibarakahouse-network
+
+networks:
+  mibarakahouse-network:
+    driver: bridge
+
+volumes:
+  mibarakahouse-db-data:
+    driver: local

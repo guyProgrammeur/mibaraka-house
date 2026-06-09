@@ -1,0 +1,104 @@
+name: CI/CD mibarakahouse
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - master
+      - workos
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ["8.4"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Node Dependencies
+        run: npm i
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-req=php
+
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      - name: Build Assets
+        run: npm run build
+
+  cd:
+    needs: ci
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploying to VPS via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/github-deployer/apps/mibaraka-house
+
+            # 1. Sécurisation des permissions de la clé mibarakahouse dédiée
+            chmod 600 /home/github-deployer/.ssh/mibaraka-house
+
+            # 2. Configurer Git pour le dossier mibarakahouse
+            git config --global --add safe.directory /home/github-deployer/apps/mibaraka-house
+
+            # 3. Initialiser le dépôt si nécessaire
+            if [ ! -d ".git" ]; then
+              git init
+              git remote add origin git@github.com:guyProgrammeur/mibaraka-house.git
+            else
+              git remote set-url origin git@github.com:guyProgrammeur/mibaraka-house.git
+            fi
+
+            # 4. Fetch en utilisant explicitement la clé dédiée 'github_mibarakahouse'
+            export GIT_SSH_COMMAND="ssh -i /home/github-deployer/.ssh/mibaraka-house -o StrictHostKeyChecking=no"
+
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+
+            # 5. Configuration de l'environnement (.env)
+            if [ ! -f ".env" ]; then
+              cp .env.example .env
+            fi
+
+            # 6. Build Docker et Optimisations Laravel (Conteneur mibarakahouse-app)
+            docker compose up -d --build
+
+            # Pause pour laisser le temps à MySQL de s'initialiser proprement
+            sleep 5
+
+            docker compose exec -T mibarakahouse-app composer install --no-interaction --prefer-dist --optimize-autoloader
+            docker compose exec -T mibarakahouse-app php artisan key:generate --skip-if-defined
+
+            # Migrations et mise en cache des configurations/routes en production
+            docker compose exec -T mibarakahouse-app php artisan migrate --force
+            docker compose exec -T mibarakahouse-app php artisan storage:link
+            docker compose exec -T mibarakahouse-app php artisan config:cache
+            docker compose exec -T mibarakahouse-app php artisan route:cache
+            docker compose exec -T mibarakahouse-app php artisan view:cache
+            docker compose exec -T mibarakahouse-app php artisan optimize
