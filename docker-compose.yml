@@ -34,7 +34,7 @@ services:
 networks:
   mibarakahouse-network:
     driver: bridge
-
+ 
 volumes:
   mibaraka-db-data:
     driver: local
