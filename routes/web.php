@@ -121,6 +121,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     });
     
     // Annonces
+    // Dans le groupe announcements
     Route::prefix('announcements')->name('announcements.')->group(function () {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
         Route::get('/create', [AnnouncementController::class, 'create'])->name('create');
@@ -133,8 +134,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::delete('/{announcement}', [AnnouncementController::class, 'destroy'])->name('destroy');
         Route::post('/{announcement}/toggle', [AnnouncementController::class, 'toggle'])->name('toggle');
         Route::post('/{announcement}/duplicate', [AnnouncementController::class, 'duplicate'])->name('duplicate');
+        Route::get('/{announcement}', [AnnouncementController::class, 'show'])->name('show'); // ← DÉCOMMENTER CETTE LIGNE
     });
-    
+        
     // Clients
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', [CustomerController::class, 'index'])->name('index');
