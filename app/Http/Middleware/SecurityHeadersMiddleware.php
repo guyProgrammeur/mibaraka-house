@@ -32,22 +32,20 @@ class SecurityHeadersMiddleware
         return $response;
     }
     
+    
     /**
-     * Politique CSP adaptée pour Mibaraka House et Livewire
+     * Politique CSP ultra-sécurisée mise à jour
      */
     private function getCspPolicy(): string
     {
         $policies = [
             "default-src 'self'",
-            // On garde uniquement les CDN essentiels pour tes scripts (Tailwind, JSdelivr, Google)
-            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.google.com https://www.gstatic.com",
-            // Nettoyé et optimisé pour le rendu CSS classique
+            // Ajout de unpkg.com pour AlpineJS et cloudflareinsights pour les analyses de trafic
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://www.google.com https://www.gstatic.com https://unpkg.com https://static.cloudflareinsights.com",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdnjs.cloudflare.com",
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
-            // Idéal pour charger tes images de produits cosmétiques et alimentaires
             "img-src 'self' data: https://*.cloudinary.com https://via.placeholder.com https://placehold.co https://quickchart.io https://*.softyik.com",
-            // SÉCURITÉ MAXIMALE : Plus besoin d'ouvrir aux requêtes asynchrones larges ou WebSockets
-            "connect-src 'self'", 
+            "connect-src 'self' https://static.cloudflareinsights.com", 
             "frame-src 'self' https://www.google.com",
             "object-src 'none'",
             "base-uri 'self'",
