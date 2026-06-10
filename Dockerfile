@@ -26,6 +26,9 @@ RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 # 3. Activation du module de réécriture d'Apache
 RUN a2enmod rewrite
 
+# Sécurisation contre la faille HTTP/2 Bomb (Vu ensemble précédemment)
+RUN echo "Protocols http/1.1" >> /etc/apache2/apache2.conf
+
 # 4. Modification de la racine d'Apache vers /public et activation d'AllowOverride
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
@@ -38,10 +41,8 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # 6. Définition du dossier de travail
 WORKDIR /var/www/html
 
-# 7. OPTIMISATION CACHE COMPOSER : Copie uniquement les fichiers de dépendances en premier
+# 7. OPTIMISATION CACHE COMPOSER
 COPY composer.json composer.lock ./
-
-# Installation sans exécuter les scripts (évite d'appeler la DB manquante au build)
 RUN composer install --no-interaction --optimize-autoloader --no-dev --no-scripts --ignore-platform-reqs
 
 # 8. COPIE DU CODE SOURCE APPLICATIF
@@ -51,6 +52,5 @@ COPY . .
 COPY --from=asset-builder /app/public/build ./public/build
 
 # 10. GESTION DES PERMISSIONS
-# On s'assure qu'Apache possède les droits sur l'ensemble, surtout storage et bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache

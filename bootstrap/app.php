@@ -12,9 +12,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        
+        // CRUCIAL : Dit à Laravel de faire confiance à Nginx Proxy Manager 
+        // pour sécuriser les adresses IP et forcer les liens en HTTPS
+        $middleware->trustProxies(at: '*');
+
+        // Déclaration de tes alias pour les routes
         $middleware->alias([
-            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'admin'    => \App\Http\Middleware\AdminMiddleware::class,
+            'throttle' => \App\Http\Middleware\ThrottleRequestsMiddleware::class, // Ton limiteur personnalisé
+        ]);
+
+        // Application globale des en-têtes de sécurité sur TOUTES les requêtes web
+        $middleware->append([
+            \App\Http\Middleware\SecurityHeadersMiddleware::class, // Chemin complet pour éviter le crash de namespace
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

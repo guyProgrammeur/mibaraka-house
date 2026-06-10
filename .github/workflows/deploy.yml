@@ -3,10 +3,7 @@ name: CI/CD mibarakahouse
 on:
   push:
     branches:
-      - develop
       - main
-      - master
-      - workos
 
 jobs:
   ci:
@@ -48,7 +45,6 @@ jobs:
 
   cd:
     needs: ci
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: Deploying to VPS via SSH
@@ -75,30 +71,33 @@ jobs:
               git remote set-url origin git@github.com:guyProgrammeur/mibaraka-house.git
             fi
 
-            # 4. Fetch en utilisant explicitement la clé dédiée 'github_mibarakahouse'
+            # 4. Fetch en utilisant explicitement la clé dédiée 'mibaraka-house'
             export GIT_SSH_COMMAND="ssh -i /home/github-deployer/.ssh/mibaraka-house -o StrictHostKeyChecking=no"
 
             git fetch origin
             git reset --hard origin/${{ github.ref_name }}
 
-            # 5. Configuration de l'environnement (.env)
+            # 5. Configuration de l'environnement (.env) AVANT le up pour éviter les dossiers fantômes
             if [ ! -f ".env" ]; then
               cp .env.example .env
             fi
+            
+            # Création des dossiers de stockage locaux si manquants pour les volumes
+            mkdir -p storage/framework/{sessions,views,cache} storage/logs
 
-            # 6. Build Docker et Optimisations Laravel (Conteneur mibarakahouse-app)
+            # 6. Build Docker avec le bon nom de conteneur
             docker compose up -d --build
 
             # Pause pour laisser le temps à MySQL de s'initialiser proprement
             sleep 5
 
-            docker compose exec -T mibarakahouse-app composer install --no-interaction --prefer-dist --optimize-autoloader
-            docker compose exec -T mibarakahouse-app php artisan key:generate --skip-if-defined
-
-            # Migrations et mise en cache des configurations/routes en production
-            docker compose exec -T mibarakahouse-app php artisan migrate --force
-            docker compose exec -T mibarakahouse-app php artisan storage:link
-            docker compose exec -T mibarakahouse-app php artisan config:cache
-            docker compose exec -T mibarakahouse-app php artisan route:cache
-            docker compose exec -T mibarakahouse-app php artisan view:cache
-            docker compose exec -T mibarakahouse-app php artisan optimize
+            # Exécution des optimisations sur le BON conteneur : mibaraka-house
+            docker compose exec -T mibaraka-house php artisan key:generate --skip-if-defined
+            docker compose exec -T mibaraka-house php artisan migrate --force
+            docker compose exec -T mibaraka-house php artisan storage:link
+            
+            # Correction instantanée des permissions sur les volumes partagés
+            docker compose exec -T mibaraka-house chown -R www-data:www-data /var/www/html/storage
+            
+            # Nettoyage et mise en cache de prod
+            docker compose exec -T mibaraka-house php artisan optimize
