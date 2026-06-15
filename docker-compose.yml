@@ -11,28 +11,9 @@ services:
       - ./storage:/var/www/html/storage
       - .env:/var/www/html/.env
     networks:
-      - mibarakahouse-network
-    depends_on:
-      - mibarakahouse-db
-
-  mibarakahouse-db:
-    image: mysql:8.0
-    container_name: mibarakahouse-db
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: mibarakahouse_db
-      MYSQL_USER: mibarakahouse_user
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    volumes:
-      - mibarakahouse-db-data:/var/lib/mysql
-    networks:
-      - mibarakahouse-network
+      - shared-network
+    # Note: On a supprimé "depends_on" car la BDD tourne déjà de manière globale
 
 networks:
-  mibarakahouse-network:
-    driver: bridge
-
-volumes:
-  mibarakahouse-db-data:
-    driver: local
+  shared-network:
+    external: true

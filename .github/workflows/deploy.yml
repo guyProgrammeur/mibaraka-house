@@ -88,16 +88,21 @@ jobs:
             # 6. Build Docker avec le bon nom de conteneur
             docker compose up -d --build
 
-            # Pause pour laisser le temps à MySQL de s'initialiser proprement
+            # Pause pour laisser le temps à l'application de s'initialiser proprement
             sleep 5
 
-            # Exécution des optimisations sur le BON conteneur : mibaraka-house
+            # Exécution des tâches Laravel sur le conteneur actif
             docker compose exec -T mibaraka-house php artisan key:generate --skip-if-defined
             docker compose exec -T mibaraka-house php artisan migrate --force
-            docker compose exec -T mibaraka-house php artisan storage:link
+            
+            # Génération robuste du lien symbolique de stockage
+            docker compose exec -T mibaraka-house php artisan storage:link --force
             
             # Correction instantanée des permissions sur les volumes partagés
             docker compose exec -T mibaraka-house chown -R www-data:www-data /var/www/html/storage
             
-            # Nettoyage et mise en cache de prod
-            docker compose exec -T mibaraka-house php artisan optimize
+            # Nettoyage sécurisé des caches sans bloquer les routes dynamiques
+            docker compose exec -T mibaraka-house php artisan optimize:clear
+
+            # Nettoyage des anciennes images Docker pour préserver l'espace disque
+            docker image prune -f

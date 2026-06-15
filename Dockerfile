@@ -27,7 +27,7 @@ RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 RUN a2enmod rewrite
 
 # Sécurisation contre la faille HTTP/2 Bomb (Vu ensemble précédemment)
-RUN echo "Protocols http/1.1" >> /etc/apache2/apache2.conf
+# RUN echo "Protocols http/1.1" >> /etc/apache2/apache2.conf
 
 # 4. Modification de la racine d'Apache vers /public et activation d'AllowOverride
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
