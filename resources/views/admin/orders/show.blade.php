@@ -1,452 +1,345 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Commande - ' . $order->order_number)
+@section('title', 'Commande ' . $order->order_number)
 @section('header', 'Détails de la commande')
 
+@section('breadcrumb')
+    <div class="text-sm text-neutral-500">
+        <a href="{{ route('admin.orders.index') }}" class="hover:text-gold">Commandes</a> <span class="mx-1">/</span>
+        <span class="text-gold">{{ $order->order_number }}</span>
+    </div>
+@endsection
+
 @section('content')
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Colonne gauche : Informations commande -->
-    <div class="lg:col-span-2 space-y-6">
-        <!-- En-tête commande -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center flex-wrap gap-3">
-                <div>
-                    <h2 class="text-xl font-semibold">{{ $order->order_number }}</h2>
-                    <p class="text-sm text-gray-500">Créée le {{ $order->created_at->format('d/m/Y à H:i') }}</p>
+<div class="space-y-6">
+    <!-- Actions rapides -->
+    <div class="bg-white border border-neutral-200 rounded-sm p-4 flex flex-wrap justify-between items-center gap-3">
+        <div class="flex gap-2">
+            <a href="{{ route('admin.orders.invoice', $order) }}" target="_blank" class="inline-flex items-center gap-2 bg-neutral-800 hover:bg-neutral-900 text-white px-3 py-1.5 text-xs uppercase tracking-wider font-semibold transition rounded-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Facture PDF
+            </a>
+            <a href="{{ route('admin.orders.whatsapp-merchant', $order) }}" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs uppercase tracking-wider font-semibold transition rounded-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                WhatsApp Commerçant
+            </a>
+            <a href="{{ route('admin.orders.whatsapp-customer', $order) }}" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs uppercase tracking-wider font-semibold transition rounded-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                WhatsApp Client
+            </a>
+        </div>
+        
+        <div class="flex gap-2">
+            @if($order->can_be_cancelled)
+            <form action="{{ route('admin.orders.cancel', $order) }}" method="POST" class="inline" onsubmit="return confirm('Annuler cette commande ?')">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status" value="cancelled">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 text-xs uppercase tracking-wider font-semibold transition rounded-sm">
+                    Annuler la commande
+                </button>
+            </form>
+            @endif
+            
+            @if($order->payment_status === 'pending')
+            <form action="{{ route('admin.orders.mark-paid', $order) }}" method="POST" class="inline" onsubmit="return confirm('Marquer cette commande comme payée ?')">
+                @csrf
+                @method('PATCH')
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs uppercase tracking-wider font-semibold transition rounded-sm">
+                    Marquer comme payée
+                </button>
+            </form>
+            @endif
+        </div>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Colonne gauche : Infos commande et client -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Statut actuel -->
+            <div class="bg-white border border-neutral-200 rounded-sm">
+                <div class="px-5 py-4 border-b border-neutral-100 bg-neutral-50">
+                    <h3 class="font-semibold text-neutral-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Statut de la commande
+                    </h3>
                 </div>
-                <div class="flex gap-2">
-                    <button type="button" onclick="openStatusModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-exchange-alt mr-2"></i>Changer statut
-                    </button>
-                    <a href="{{ route('admin.orders.invoice', $order) }}" target="_blank" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-print mr-2"></i>Facture
-                    </a>
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">
-                            <i class="fab fa-whatsapp mr-2"></i>WhatsApp
-                        </button>
-                        <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10 border">
-                            <a href="{{ route('admin.orders.whatsapp-merchant', $order) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg">
-                                <i class="fab fa-whatsapp text-green-600 mr-2"></i>Envoyer au commerçant
-                            </a>
-                            <a href="{{ route('admin.orders.whatsapp-customer', $order) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-b-lg">
-                                <i class="fab fa-whatsapp text-blue-600 mr-2"></i>Envoyer au client
-                            </a>
+                <div class="p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium
+                                @if($order->status === 'pending') bg-amber-100 text-amber-700
+                                @elseif($order->status === 'confirmed') bg-blue-100 text-blue-700
+                                @elseif($order->status === 'preparing') bg-purple-100 text-purple-700
+                                @elseif($order->status === 'ready') bg-indigo-100 text-indigo-700
+                                @elseif($order->status === 'delivered') bg-emerald-100 text-emerald-700
+                                @else bg-neutral-100 text-neutral-500 @endif">
+                                {{ $order->status_label }}
+                            </span>
+                        </div>
+                        <div class="text-sm text-neutral-500">
+                            Créée le {{ $order->created_at->format('d/m/Y à H:i') }}
+                        </div>
+                    </div>
+                    
+                    <!-- Barre de progression des statuts -->
+                    <div class="mt-6">
+                        @php
+                            $statuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivered'];
+                            $currentIndex = array_search($order->status, $statuses);
+                        @endphp
+                        <div class="flex items-center justify-between">
+                            @foreach($statuses as $index => $status)
+                                <div class="flex flex-col items-center flex-1">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+                                        @if($index <= $currentIndex) bg-gold text-black @else bg-neutral-200 text-neutral-500 @endif">
+                                        {{ $index + 1 }}
+                                    </div>
+                                    <div class="text-xs mt-1 text-center {{ $index <= $currentIndex ? 'text-gold' : 'text-neutral-400' }}">
+                                        {{ ucfirst($status) }}
+                                    </div>
+                                </div>
+                                @if($index < count($statuses) - 1)
+                                    <div class="flex-1 h-0.5 {{ $index < $currentIndex ? 'bg-gold' : 'bg-neutral-200' }}"></div>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                    
+                    <!-- Formulaire changement statut -->
+                    <div class="mt-6 pt-4 border-t border-neutral-100">
+                        <form action="{{ route('admin.orders.update-status', $order) }}" method="POST" class="flex gap-3">
+                            @csrf
+                            @method('PATCH')
+                            <select name="status" class="flex-1 border border-neutral-200 rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-gold">
+                                <option value="">Changer le statut</option>
+                                @if($order->status === 'pending')
+                                    <option value="confirmed">✓ Confirmer la commande</option>
+                                    <option value="cancelled">✗ Annuler la commande</option>
+                                @elseif($order->status === 'confirmed')
+                                    <option value="preparing">Commencer la préparation</option>
+                                    <option value="cancelled">Annuler la commande</option>
+                                @elseif($order->status === 'preparing')
+                                    <option value="ready">Marquer comme prête</option>
+                                    <option value="cancelled">Annuler la commande</option>
+                                @elseif($order->status === 'ready')
+                                    <option value="delivered">Marquer comme livrée</option>
+                                @endif
+                            </select>
+                            <button type="submit" class="bg-gold hover:bg-gold-dark text-black px-4 py-2 text-xs uppercase tracking-wider font-semibold transition rounded-sm">
+                                Mettre à jour
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Informations client -->
+            <div class="bg-white border border-neutral-200 rounded-sm">
+                <div class="px-5 py-4 border-b border-neutral-100 bg-neutral-50">
+                    <h3 class="font-semibold text-neutral-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        Informations client
+                    </h3>
+                </div>
+                <div class="p-5">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-neutral-400">Nom complet</p>
+                            <p class="font-medium">{{ $order->customer_name }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-neutral-400">Téléphone</p>
+                            <p class="font-medium">
+                                {{ $order->customer_phone }}
+                                <a href="https://wa.me/{{ $order->customer_phone }}" target="_blank" class="text-emerald-600 ml-2 hover:underline text-sm">
+                                    <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="col-span-2">
+                            <p class="text-xs text-neutral-400">Email</p>
+                            <p class="font-medium">{{ $order->customer_email ?? 'Non renseigné' }}</p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                    <p class="text-xs text-gray-500">Statut</p>
-                    <span class="px-2 py-1 text-sm rounded-full inline-block mt-1
-                        @if($order->status === 'pending') bg-yellow-100 text-yellow-800
-                        @elseif($order->status === 'confirmed') bg-blue-100 text-blue-800
-                        @elseif($order->status === 'preparing') bg-purple-100 text-purple-800
-                        @elseif($order->status === 'ready') bg-indigo-100 text-indigo-800
-                        @elseif($order->status === 'delivered') bg-green-100 text-green-800
-                        @else bg-red-100 text-red-800 @endif">
-                        {{ $order->status_label }}
-                    </span>
+            <!-- Adresse de livraison -->
+            <div class="bg-white border border-neutral-200 rounded-sm">
+                <div class="px-5 py-4 border-b border-neutral-100 bg-neutral-50">
+                    <h3 class="font-semibold text-neutral-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Adresse de livraison
+                    </h3>
                 </div>
-                <div>
-                    <p class="text-xs text-gray-500">Paiement</p>
-                    <span class="px-2 py-1 text-sm rounded-full inline-block mt-1 {{ $order->payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                        {{ $order->payment_status === 'paid' ? 'Payé' : 'En attente' }}
-                    </span>
-                    @if($order->payment_method)
-                    <p class="text-xs text-gray-500 mt-1">{{ $order->payment_method }}</p>
+                <div class="p-5">
+                    @if($order->delivery_address)
+                        <p class="mb-2">{{ $order->delivery_address }}</p>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            @if($order->delivery_city)
+                                <div><span class="text-neutral-500">Ville:</span> {{ $order->delivery_city }}</div>
+                            @endif
+                            @if($order->delivery_neighborhood)
+                                <div><span class="text-neutral-500">Quartier:</span> {{ $order->delivery_neighborhood }}</div>
+                            @endif
+                        </div>
+                        @if($order->delivery_notes)
+                            <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-sm">
+                                <p class="text-xs text-amber-700 font-semibold mb-1">📝 Notes de livraison</p>
+                                <p class="text-sm">{{ $order->delivery_notes }}</p>
+                            </div>
+                        @endif
+                    @else
+                        <p class="text-neutral-400">Pas d'adresse de livraison renseignée</p>
                     @endif
                 </div>
-                <div>
-                    <p class="text-xs text-gray-500">Devise</p>
-                    <p class="text-sm font-medium mt-1">{{ $order->currency_code }} (1 = {{ number_format($order->exchange_rate, 2) }})</p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-500">WhatsApp envoyé</p>
-                    <p class="text-sm mt-1">
-                        @if($order->whatsapp_sent)
-                        <span class="text-green-600"><i class="fas fa-check-circle"></i> Oui le {{ $order->whatsapp_sent_at?->format('d/m/H:i') }}</span>
-                        @else
-                        <span class="text-gray-500">Non</span>
-                        @endif
-                    </p>
-                </div>
             </div>
         </div>
         
-        <!-- Produits commandés -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="font-medium">Produits commandés</h3>
-                <button type="button" onclick="openAddProductModal()" class="text-blue-600 hover:text-blue-800 text-sm">
-                    <i class="fas fa-plus mr-1"></i>Ajouter un produit
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produit</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix unitaire</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Quantité</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sous-total</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        @foreach($order->items as $item)
-                        <tr>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    @if($item->product_image)
-                                    <img src="{{ asset('storage/' . $item->product_image) }}" class="w-10 h-10 object-cover rounded" alt="">
-                                    @else
-                                    <div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
-                                        <i class="fas fa-box text-gray-400"></i>
-                                    </div>
-                                    @endif
-                                    <div>
-                                        <div class="font-medium">{{ $item->product_name }}</div>
-                                        @if($item->product && !$item->product->is_active)
-                                        <span class="text-xs text-red-500">Produit désactivé</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-center">
-                                {{ number_format($item->unit_price, 2) }} {{ $order->currency_code }}
-                            </td>
-                            <td class="px-6 py-4">
-                                <form action="{{ route('admin.orders.items.update', [$order, $item->id]) }}" method="POST" class="flex items-center justify-center gap-2">
-                                    @csrf
-                                    @method('PUT')
-                                    <input type="number" name="quantity" value="{{ $item->quantity }}" min="1" class="w-20 border rounded px-2 py-1 text-center text-sm">
-                                    <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm">
-                                        <i class="fas fa-save"></i>
-                                    </button>
-                                </form>
-                            </td>
-                            <td class="px-6 py-4 text-right font-medium">
-                                {{ number_format($item->subtotal, 2) }} {{ $order->currency_code }}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <form action="{{ route('admin.orders.items.remove', [$order, $item->id]) }}" method="POST" class="inline" onsubmit="return confirm('Supprimer ce produit ?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-800">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot class="bg-gray-50">
-                        <tr>
-                            <td colspan="3" class="px-6 py-4 text-right font-medium">Sous-total</td>
-                            <td class="px-6 py-4 text-right font-medium">{{ $order->formatted_subtotal }}</td>
-                            <td></td>
-                        </tr>
-                        <tr>
-                            <td colspan="3" class="px-6 py-4 text-right font-medium">
-                                <form action="{{ route('admin.orders.delivery-fee', $order) }}" method="POST" class="flex items-center justify-end gap-2">
-                                    @csrf
-                                    @method('PATCH')
-                                    <span>Frais de livraison</span>
-                                    <input type="number" name="delivery_fee" value="{{ $order->delivery_fee }}" step="0.01" class="w-24 border rounded px-2 py-1 text-right text-sm">
-                                    <button type="submit" class="text-blue-600 hover:text-blue-800">
-                                        <i class="fas fa-save"></i>
-                                    </button>
-                                </form>
-                            </td>
-                            <td class="px-6 py-4 text-right font-medium">{{ $order->formatted_delivery_fee }}</td>
-                            <td></td>
-                        </tr>
-                        <tr class="border-t-2">
-                            <td colspan="3" class="px-6 py-4 text-right font-bold text-lg">TOTAL</td>
-                            <td class="px-6 py-4 text-right font-bold text-lg">{{ $order->formatted_total }}</td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Notes administratives -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="font-medium">Notes administratives</h3>
-            </div>
-            <div class="p-6">
-                <form action="{{ route('admin.orders.notes', $order) }}" method="POST">
-                    @csrf
-                    @method('PATCH')
-                    <textarea name="admin_notes" rows="4" class="w-full border rounded-lg px-3 py-2">{{ $order->admin_notes }}</textarea>
-                    <div class="mt-3 text-right">
-                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
-                            <i class="fas fa-save mr-2"></i>Enregistrer
-                        </button>
+        <!-- Colonne droite : Produits et résumé -->
+        <div class="space-y-6">
+            <!-- Résumé de la commande -->
+            <div class="bg-white border border-neutral-200 rounded-sm">
+                <div class="px-5 py-4 border-b border-neutral-100 bg-neutral-50">
+                    <h3 class="font-semibold text-neutral-800">Résumé</h3>
+                </div>
+                <div class="p-5 space-y-3">
+                    <div class="flex justify-between py-2">
+                        <span class="text-neutral-600">N° commande</span>
+                        <span class="font-mono font-semibold">{{ $order->order_number }}</span>
                     </div>
-                </form>
+                    <div class="flex justify-between py-2 border-t border-neutral-100">
+                        <span class="text-neutral-600">Sous-total</span>
+                        <span>{{ number_format($order->subtotal, 2) }} {{ $order->currency_code }}</span>
+                    </div>
+                    <div class="flex justify-between py-2">
+                        <span class="text-neutral-600">Frais de livraison</span>
+                        <span>{{ $order->delivery_fee > 0 ? number_format($order->delivery_fee, 2) . ' ' . $order->currency_code : 'Gratuit' }}</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-t border-neutral-100 font-bold text-lg">
+                        <span>Total</span>
+                        <span class="text-gold">{{ number_format($order->total_amount, 2) }} {{ $order->currency_code }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Informations paiement -->
+            <div class="bg-white border border-neutral-200 rounded-sm">
+                <div class="px-5 py-4 border-b border-neutral-100 bg-neutral-50">
+                    <h3 class="font-semibold text-neutral-800">Paiement</h3>
+                </div>
+                <div class="p-5 space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-neutral-600">Statut</span>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $order->payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                            {{ $order->payment_status === 'paid' ? 'Payé' : 'En attente' }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-neutral-600">Méthode</span>
+                        <span>
+                            @if($order->payment_method === 'cash') Espèces
+                            @elseif($order->payment_method === 'mobile_money') Mobile Money
+                            @elseif($order->payment_method === 'bank_transfer') Virement bancaire
+                            @else Non spécifié @endif
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-neutral-600">Devise</span>
+                        <span>{{ $order->currency_code }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- WhatsApp Status -->
+            <div class="bg-white border border-neutral-200 rounded-sm">
+                <div class="px-5 py-4 border-b border-neutral-100 bg-neutral-50">
+                    <h3 class="font-semibold text-neutral-800">Notifications WhatsApp</h3>
+                </div>
+                <div class="p-5">
+                    @if($order->whatsapp_sent)
+                        <div class="flex items-center gap-2 text-emerald-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Notification envoyée le {{ $order->whatsapp_sent_at?->format('d/m/Y à H:i') }}</span>
+                        </div>
+                    @else
+                        <div class="flex items-center gap-2 text-amber-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Aucune notification envoyée</span>
+                        </div>
+                        <div class="mt-3">
+                            <a href="{{ route('admin.orders.whatsapp-merchant', $order) }}" class="text-sm text-gold hover:underline">
+                                Envoyer la notification →
+                            </a>
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- Colonne droite : Client et livraison -->
-    <div class="lg:col-span-1 space-y-6">
-        <!-- Informations client -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="font-medium">Client</h3>
-                @if($order->customer)
-                <a href="{{ route('admin.customers.show', $order->customer) }}" class="text-blue-600 text-sm hover:underline">
-                    Voir profil
-                </a>
-                @endif
-            </div>
-            <div class="p-6 space-y-3">
-                <div>
-                    <p class="text-xs text-gray-500">Nom</p>
-                    <p class="font-medium">{{ $order->customer_name }}</p>
-                </div>
-                <div>
-                    <p class="text-xs text-gray-500">Téléphone</p>
-                    <a href="https://wa.me/{{ $order->customer_phone }}" target="_blank" class="text-green-600 hover:underline">
-                        {{ $order->customer_phone }}
-                    </a>
-                </div>
-                @if($order->customer_email)
-                <div>
-                    <p class="text-xs text-gray-500">Email</p>
-                    <p>{{ $order->customer_email }}</p>
-                </div>
-                @endif
-                @if($order->customer && $order->customer->total_orders > 0)
-                <div class="pt-3 border-t">
-                    <div class="grid grid-cols-2 gap-2 text-center">
-                        <div>
-                            <p class="text-xs text-gray-500">Commandes</p>
-                            <p class="font-bold">{{ $order->customer->total_orders }}</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Total dépensé</p>
-                            <p class="font-bold">{{ number_format($order->customer->total_spent, 2) }} $</p>
-                        </div>
-                    </div>
-                </div>
-                @endif
-            </div>
+    <!-- Liste des produits -->
+    <div class="bg-white border border-neutral-200 rounded-sm">
+        <div class="px-5 py-4 border-b border-neutral-100 bg-neutral-50">
+            <h3 class="font-semibold text-neutral-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                </svg>
+                Produits commandés
+            </h3>
         </div>
-        
-        <!-- Adresse de livraison -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="font-medium">Adresse de livraison</h3>
-            </div>
-            <div class="p-6">
-                <p>{{ $order->delivery_address }}</p>
-                @if($order->delivery_neighborhood)
-                <p class="mt-1">Quartier: {{ $order->delivery_neighborhood }}</p>
-                @endif
-                @if($order->delivery_city)
-                <p>Ville: {{ $order->delivery_city }}</p>
-                @endif
-                @if($order->delivery_notes)
-                <div class="mt-3 p-3 bg-yellow-50 rounded-lg">
-                    <p class="text-xs text-yellow-800 font-medium">Notes de livraison</p>
-                    <p class="text-sm">{{ $order->delivery_notes }}</p>
-                </div>
-                @endif
-            </div>
-        </div>
-        
-        <!-- Paiement -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="font-medium">Paiement</h3>
-            </div>
-            <div class="p-6">
-                <form action="{{ route('admin.orders.payment', $order) }}" method="POST">
-                    @csrf
-                    @method('PATCH')
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm text-gray-700 mb-1">Statut</label>
-                            <select name="payment_status" class="w-full border rounded-lg px-3 py-2">
-                                <option value="pending" {{ $order->payment_status == 'pending' ? 'selected' : '' }}>En attente</option>
-                                <option value="paid" {{ $order->payment_status == 'paid' ? 'selected' : '' }}>Payé</option>
-                                <option value="failed" {{ $order->payment_status == 'failed' ? 'selected' : '' }}>Échoué</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm text-gray-700 mb-1">Méthode</label>
-                            <select name="payment_method" class="w-full border rounded-lg px-3 py-2">
-                                <option value="">-- Sélectionner --</option>
-                                <option value="cash" {{ $order->payment_method == 'cash' ? 'selected' : '' }}>Espèces</option>
-                                <option value="mobile_money" {{ $order->payment_method == 'mobile_money' ? 'selected' : '' }}>Mobile Money</option>
-                                <option value="bank_transfer" {{ $order->payment_method == 'bank_transfer' ? 'selected' : '' }}>Virement bancaire</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
-                            <i class="fas fa-save mr-2"></i>Mettre à jour
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <!-- Actions supplémentaires -->
-        <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="font-medium">Actions</h3>
-            </div>
-            <div class="p-6 space-y-2">
-                @if($order->can_be_cancelled)
-                <button type="button" onclick="openCancelModal()" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm">
-                    <i class="fas fa-times mr-2"></i>Annuler la commande
-                </button>
-                @endif
-                <form action="{{ route('admin.orders.duplicate', $order) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-copy mr-2"></i>Dupliquer la commande
-                    </button>
-                </form>
-                @if(in_array($order->status, ['delivered', 'cancelled']))
-                <form action="{{ route('admin.orders.destroy', $order) }}" method="POST" onsubmit="return confirm('Supprimer définitivement cette commande ?')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="w-full bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
-                        <i class="fas fa-trash-alt mr-2"></i>Supprimer
-                    </button>
-                </form>
-                @endif
-            </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-neutral-500">Produit</th>
+                        <th class="px-4 py-3 text-center text-xs font-semibold text-neutral-500">Quantité</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-neutral-500">Prix unitaire</th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-neutral-500">Sous-total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    @foreach($order->items as $item)
+                    <tr>
+                        <td class="px-4 py-3 font-medium">{{ $item->product_name }}</td>
+                        <td class="px-4 py-3 text-center">{{ $item->quantity }}</td>
+                        <td class="px-4 py-3 text-right">{{ number_format($item->unit_price, 2) }} {{ $order->currency_code }}</td>
+                        <td class="px-4 py-3 text-right font-semibold">{{ number_format($item->subtotal, 2) }} {{ $order->currency_code }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-neutral-50 border-t border-neutral-200">
+                    <tr>
+                        <td colspan="3" class="px-4 py-3 text-right font-semibold">Total</td>
+                        <td class="px-4 py-3 text-right font-bold text-gold">{{ number_format($order->total_amount, 2) }} {{ $order->currency_code }}</td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
-</div>
-
-<!-- Modal Changement de statut -->
-<div id="statusModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b flex justify-between items-center">
-            <h3 class="text-lg font-medium">Changer le statut</h3>
-            <button onclick="closeStatusModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
+    
+    <!-- Notes admin -->
+    @if($order->admin_notes)
+    <div class="bg-amber-50 border border-amber-200 rounded-sm">
+        <div class="px-5 py-4 border-b border-amber-200">
+            <h3 class="font-semibold text-amber-800">📝 Notes internes</h3>
         </div>
-        <form action="{{ route('admin.orders.status', $order) }}" method="POST">
-            @csrf
-            @method('PATCH')
-            <div class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nouveau statut</label>
-                    <select name="status" class="w-full border rounded-lg px-3 py-2">
-                        <option value="pending" {{ $order->status == 'pending' ? 'selected' : '' }}>En attente</option>
-                        <option value="confirmed" {{ $order->status == 'confirmed' ? 'selected' : '' }}>Confirmée</option>
-                        <option value="preparing" {{ $order->status == 'preparing' ? 'selected' : '' }}>En préparation</option>
-                        <option value="ready" {{ $order->status == 'ready' ? 'selected' : '' }}>Prête</option>
-                        <option value="delivered" {{ $order->status == 'delivered' ? 'selected' : '' }}>Livrée</option>
-                        <option value="cancelled" {{ $order->status == 'cancelled' ? 'selected' : '' }}>Annulée</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Note (optionnelle)</label>
-                    <textarea name="note" rows="3" class="w-full border rounded-lg px-3 py-2" placeholder="Raison du changement..."></textarea>
-                </div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-end gap-3">
-                <button type="button" onclick="closeStatusModal()" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100">
-                    Annuler
-                </button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-save mr-2"></i>Appliquer
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Modal Ajout produit -->
-<div id="addProductModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b flex justify-between items-center">
-            <h3 class="text-lg font-medium">Ajouter un produit</h3>
-            <button onclick="closeAddProductModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
+        <div class="p-5">
+            <p class="text-amber-800 whitespace-pre-line">{{ $order->admin_notes }}</p>
         </div>
-        <form action="{{ route('admin.orders.items.add', $order) }}" method="POST">
-            @csrf
-            <div class="p-6 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Produit</label>
-                    <select name="product_id" required class="w-full border rounded-lg px-3 py-2">
-                        <option value="">-- Sélectionner --</option>
-                        @foreach($products as $product)
-                        <option value="{{ $product->id }}" data-price="{{ $product->price }}">
-                            {{ $product->name }} - {{ number_format($product->price, 2) }} $
-                            @if($product->track_stock)
-                                (Stock: {{ $product->stock_quantity }})
-                            @endif
-                        </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantité</label>
-                    <input type="number" name="quantity" value="1" min="1" required class="w-full border rounded-lg px-3 py-2">
-                </div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-end gap-3">
-                <button type="button" onclick="closeAddProductModal()" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100">
-                    Annuler
-                </button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-plus mr-2"></i>Ajouter
-                </button>
-            </div>
-        </form>
     </div>
+    @endif
 </div>
-
-<!-- Modal Annulation -->
-<div id="cancelModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div class="px-6 py-4 border-b">
-            <h3 class="text-lg font-medium text-red-600">Annuler la commande</h3>
-        </div>
-        <form action="{{ route('admin.orders.cancel', $order) }}" method="POST">
-            @csrf
-            <div class="p-6 space-y-4">
-                <p class="text-sm text-gray-600">Êtes-vous sûr de vouloir annuler cette commande ?</p>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Raison (optionnelle)</label>
-                    <textarea name="reason" rows="3" class="w-full border rounded-lg px-3 py-2" placeholder="Raison de l'annulation..."></textarea>
-                </div>
-            </div>
-            <div class="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-end gap-3">
-                <button type="button" onclick="closeCancelModal()" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100">
-                    Retour
-                </button>
-                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-                    <i class="fas fa-check mr-2"></i>Confirmer l'annulation
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-@push('scripts')
-<script>
-    function openStatusModal() { document.getElementById('statusModal').classList.remove('hidden'); document.getElementById('statusModal').classList.add('flex'); }
-    function closeStatusModal() { document.getElementById('statusModal').classList.add('hidden'); document.getElementById('statusModal').classList.remove('flex'); }
-    function openAddProductModal() { document.getElementById('addProductModal').classList.remove('hidden'); document.getElementById('addProductModal').classList.add('flex'); }
-    function closeAddProductModal() { document.getElementById('addProductModal').classList.add('hidden'); document.getElementById('addProductModal').classList.remove('flex'); }
-    function openCancelModal() { document.getElementById('cancelModal').classList.remove('hidden'); document.getElementById('cancelModal').classList.add('flex'); }
-    function closeCancelModal() { document.getElementById('cancelModal').classList.add('hidden'); document.getElementById('cancelModal').classList.remove('flex'); }
-</script>
-@endpush
 @endsection
